@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from random import randint
 
 class My_2048(object):
