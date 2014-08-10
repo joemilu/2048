@@ -1,7 +1,11 @@
 #!/usr/bin/env python
+import curses
 from random import randint
 
+stdscr = curses.initscr()
 
+def debug(str):
+    stdscr.addstr(12,0,str)
 
 def get_color(str_line):
   out_str_line = ''
@@ -211,22 +215,42 @@ class My_2048(object):
       view = self.set_list_char(view, post_list[i], view_str[i])
 
 
-    view = get_color(view)
-    print view
+    #view = get_color(view)
+    #print view
+    stdscr.addstr(0,0,view,curses.color_pair(1))
 
-    print 'up: i down: k left: j right: l'
+    #print 'up: i down: k left: j right: l quit: q'
+    stdscr.addstr(10,0,'up: i down: k left: j right: l quit: q',curses.color_pair(1))
+    
+    slide = stdscr.getch()
+    debug("slide is " + curses.keyname(slide))
+    if curses.keyname(slide) == 'q':
+        curses.echo()
+        curses.nocbreak()
+        curses.endwin()
+        return
 
-    valid_input = False
-    while(not valid_input):
-      slide = raw_input()
-      if slide in 'ikjl':
-        valid_input = True
+    if slide == curses.KEY_UP:
+        slide = ord('i')
+        
+    if slide == curses.KEY_DOWN:
+        slide = ord('k')
 
-    self.do_slide(slide)
+    if slide == curses.KEY_LEFT:
+        slide = ord('j')
 
-def main():
-  a = My_2048();
-  a.dump()
+    if slide == curses.KEY_RIGHT:
+        slide = ord('l')
+
+    self.do_slide(chr(slide))
+
+def main(win):
+    curses.start_color()
+    curses.init_pair(1, curses.COLOR_GREEN, curses.COLOR_BLACK)
+    curses.noecho()
+    curses.cbreak()
+    a = My_2048();
+    a.dump()
 
 if __name__ == '__main__':
-   main() 
+   curses.wrapper(main) 
