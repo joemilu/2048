@@ -7,32 +7,6 @@ stdscr = curses.initscr()
 def debug(str):
     stdscr.addstr(12,0,str)
 
-def get_color(str_line):
-    out_str_line = ''
-    key_list = ['c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n']
-    color_bg_list = [str(i) for i in [47, 43, 42, 46, 44, 45, 41, 40, 40, 40, 40, 40]]
-    color_fg_list = [str(i) for i in [30, 37, 37, 37, 37, 37, 37, 37, 37, 37, 37, 37]]
-    color_print_list = ['\033[;' + color_fg_list[i] + ';' + color_bg_list[i] + 'm' for i in xrange(len(key_list))]
-    
-    
-    bit_count = 0
-    for i in xrange(len(str_line) - 1):
-        if 0 != bit_count:
-            bit_count -= 1
-            continue
-        
-        if str_line[i + 1] not in key_list:
-            out_str_line += str_line[i]
-            continue
-        
-        for j in xrange(len(key_list)):
-            if key_list[j] == str_line[i + 1]:
-                out_str_line +=color_print_list[j] + ' ' + key_list[j] + ' \033[0m'
-                bit_count = 2
-                break
-    
-    return out_str_line
-
 class My_2048(object):
     
     def __init__(self):
@@ -85,10 +59,7 @@ class My_2048(object):
     
     def do_popup(self):
         blank_count = self.get_blank_count()
-        if blank_count > 8 and 0 == randint(0, 1):
-            self.do_popup_twice(blank_count)
-        elif blank_count > 0:
-            self.do_popup_single(blank_count)
+        self.do_popup_single(blank_count)
     
     def unsparse_line(self, l):
         # print '**************'
@@ -168,27 +139,54 @@ class My_2048(object):
     def do_slide(self, slide):
         
         curr_view = [i for i in self.view_contant]
-        if 'i' == slide:
+        if curses.KEY_UP == slide:
             self.do_slide_up()
-        elif 'k' == slide:
+        elif curses.KEY_DOWN == slide:
             self.do_slide_down()
-        elif 'j' == slide:
+        elif curses.KEY_LEFT == slide:
             self.do_slide_left()
-        elif 'l' == slide:
+        elif curses.KEY_RIGHT == slide:
             self.do_slide_right()
         the_same = True
         for i in xrange(len(curr_view)):
             if not curr_view[i] == self.view_contant[i]:
                 the_same = False
+
         if not the_same:
             self.do_popup()
-        self.do_dump()
+            
+        return the_same
     
-    def do_dump(self):
-        self.dump()
-        pass
+    def is_game_over(self):
+        #backup
+        backup_view_contant = list(self.view_contant)
+        backup_sort_list = list(self.sort_list)
+        over = False
+        if self.do_slide(curses.KEY_UP) and self.do_slide(curses.KEY_DOWN) and self.do_slide(curses.KEY_LEFT) and self.do_slide(curses.KEY_RIGHT):
+            over = True
+        self.view_contant = list(backup_view_contant)
+        self.sort_list = list(backup_sort_list)
+        return over
     
-    def dump(self):
+    def disp_init(self):
+        curses.start_color()
+        curses.init_pair(1, curses.COLOR_GREEN, curses.COLOR_BLACK)
+        curses.noecho()
+        curses.cbreak()
+
+    def do_quit(self,key):
+        curses.echo()
+        curses.nocbreak()
+        curses.endwin()
+        quit()
+
+    def do_restart(self,key=0):
+        self.__init__()
+        self.do_popup_twice(16)
+        stdscr.clear()
+        self.do_refresh()
+
+    def do_refresh(self):
         view = ('''
             +---+---+---+---+
             | 1 | 1 | 1 | 1 |
@@ -207,50 +205,38 @@ class My_2048(object):
             if '1' == view[i]:
                 post_list.append(i)
         
-        if 16 == self.get_blank_count():
-            self.do_popup_twice(16)
-        
         view_str = self.get_view_str()
         for i in xrange(len(post_list)):
             view = self.set_list_char(view, post_list[i], view_str[i])
         
-        
-        #view = get_color(view)
-        #print view
         stdscr.addstr(0,0,view,curses.color_pair(1))
-        
-        #print 'up: i down: k left: j right: l quit: q'
         stdscr.addstr(10,0,'up: i down: k left: j right: l quit: q',curses.color_pair(1))
-        
-        slide = stdscr.getch()
-        debug("slide is " + curses.keyname(slide))
-        if curses.keyname(slide) == 'q':
-            curses.echo()
-            curses.nocbreak()
-            curses.endwin()
-            return
-        
-        if slide == curses.KEY_UP:
-            slide = ord('i')
-        
-        if slide == curses.KEY_DOWN:
-            slide = ord('k')
-        
-        if slide == curses.KEY_LEFT:
-            slide = ord('j')
-        
-        if slide == curses.KEY_RIGHT:
-            slide = ord('l')
-        
-        self.do_slide(chr(slide))
+ 
+    key_lists = { curses.KEY_UP:do_slide, curses.KEY_DOWN:do_slide, curses.KEY_LEFT:do_slide, \
+            curses.KEY_RIGHT:do_slide, ord('r'):do_restart, ord('q'):do_quit}
+
+    def start(self):
+        self.disp_init()
+        self.do_restart()
+        while True:
+            #get key
+            key = stdscr.getch()
+            #stdscr.clear()
+            debug('               ')
+            debug(str(key))
+            if not key in self.key_lists.keys():
+                continue
+            self.key_lists[key](self,key)
+            #do refresh
+            self.do_refresh()
+            #debug(str(self.is_game_over()))
+            if self.is_game_over():
+                stdscr.addstr(11,0,'game over !!',curses.color_pair(1))
+         
 
 def main(win):
-    curses.start_color()
-    curses.init_pair(1, curses.COLOR_GREEN, curses.COLOR_BLACK)
-    curses.noecho()
-    curses.cbreak()
     a = My_2048();
-    a.dump()
+    a.start()
 
 if __name__ == '__main__':
     curses.wrapper(main) 

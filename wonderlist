@@ -1,4 +1,5 @@
-restart
-new popup
-end game
-fix iterate overflow
+restart						done
+new popup					
+end game					done
+fix iterate overflow		done
+game points	
