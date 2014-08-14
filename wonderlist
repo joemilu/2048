@@ -1,0 +1,4 @@
+restart
+new popup
+end game
+fix iterate overflow
