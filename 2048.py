@@ -4,8 +4,8 @@ from random import randint
 
 stdscr = curses.initscr()
 
-def debug(str):
-    stdscr.addstr(12,0,str)
+def debug(s):
+    stdscr.addstr(12,0,str(s))
 
 class My_2048(object):
     
@@ -14,10 +14,7 @@ class My_2048(object):
         self.sort_list = ['', '', '', '']
     
     def get_view_str(self):
-        view_str = ''
-        for i in self.view_contant:
-            view_str += i
-        return view_str
+        return ''.join(self.view_contant)
     
     def set_list_char(self, str_list, post, popup_char):
         return str_list[:post] + popup_char + str_list[post + 1:]
@@ -38,24 +35,11 @@ class My_2048(object):
         self.popup_post_char(post, popup_char)
     
     def do_popup_twice(self, blank_count):
-        post = randint(0, blank_count - 1)
-        post_2 = post
-        while post == post_2:
-            post_2 = randint(0, blank_count - 1)
-        popup_char = ['a', 'b'][randint(0, 1)]
-        popup_char_2 = ['a', 'b'][randint(0, 1)]
-        self.popup_post_char(post, popup_char)
-        self.popup_post_char(post_2, popup_char_2)
+        self.do_popup_single(blank_count)
+        self.do_popup_single(blank_count - 1)
     
     def get_blank_count(self):
-        view_str = self.get_view_str()
-        view_str_list = list(view_str)
-        view_str_list.sort()
-        
-        for i in xrange(len(view_str_list)):
-            if not ' ' == view_str_list[i]:
-                return i
-        return 16
+        return sum([ i.count(' ') for i in self.view_contant ])
     
     def do_popup(self):
         blank_count = self.get_blank_count()
@@ -148,9 +132,8 @@ class My_2048(object):
         elif curses.KEY_RIGHT == slide:
             self.do_slide_right()
         the_same = True
-        for i in xrange(len(curr_view)):
-            if not curr_view[i] == self.view_contant[i]:
-                the_same = False
+        if curr_view != self.view_contant :
+            the_same = False
 
         if not the_same:
             self.do_popup()
@@ -210,7 +193,7 @@ class My_2048(object):
             view = self.set_list_char(view, post_list[i], view_str[i])
         
         stdscr.addstr(0,0,view,curses.color_pair(1))
-        stdscr.addstr(10,0,'up: i down: k left: j right: l quit: q',curses.color_pair(1))
+        stdscr.addstr(10,0,'up: i down: k left: j right: l restart: r quit: q',curses.color_pair(1))
  
     key_lists = { curses.KEY_UP:do_slide, curses.KEY_DOWN:do_slide, curses.KEY_LEFT:do_slide, \
             curses.KEY_RIGHT:do_slide, ord('r'):do_restart, ord('q'):do_quit}
@@ -229,7 +212,6 @@ class My_2048(object):
             self.key_lists[key](self,key)
             #do refresh
             self.do_refresh()
-            #debug(str(self.is_game_over()))
             if self.is_game_over():
                 stdscr.addstr(11,0,'game over !!',curses.color_pair(1))
          
