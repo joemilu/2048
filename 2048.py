@@ -1,8 +1,28 @@
 #!/usr/bin/env python
 import curses
 from random import randint
+import re
 
 stdscr = curses.initscr()
+screen_mask = list('''
+            +---+---+---+---+
+            | 1 | 1 | 1 | 1 |
+            +---+---+---+---+
+            | 1 | 1 | 1 | 1 |
+            +---+---+---+---+
+            | 1 | 1 | 1 | 1 |
+            +---+---+---+---+
+            | 1 | 1 | 1 | 1 |
+            +---+---+---+---+
+            
+            ''')
+
+chairs = [45, 49, 53, 57, 105, 109, 113, 117, 165, 169, 173, 177, 225, 229, 233, 237]
+
+up_index_list = [[0, 1, 2, 3], [1, 2, 3, 4], [2, 3, 4, 5], [3, 4, 5, 6]]
+down_index_list = [[12, 8, 4, 0], [13, 9, 5, 1], [14, 10, 6, 2], [15, 11, 7, 3]]
+left_index_list = [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15]]
+right_index_list = [[3, 2, 1, 0], [7, 6, 5, 4], [11, 10, 9, 8], [15, 14, 13, 12]]
 
 def debug(s):
     stdscr.addstr(12,0,str(s))
@@ -10,119 +30,64 @@ def debug(s):
 class My_2048(object):
     
     def __init__(self):
-        self.view_contant = ['    ', '    ', '    ', '    ']
-        self.sort_list = ['', '', '', '']
-    
-    def get_view_str(self):
-        return ''.join(self.view_contant)
+        self.content=[' ']*16
     
     def set_list_char(self, str_list, post, popup_char):
-        return str_list[:post] + popup_char + str_list[post + 1:]
-    
-    def popup_post_char(self, post, popup_char):
-        curr_post = 0
-        for i in xrange(len(self.view_contant)):
-            for j in xrange(len(self.view_contant[0])):
-                if ' ' == self.view_contant[i][j]:
-                    if curr_post == post:
-                        self.view_contant[i] = self.set_list_char(self.view_contant[i], j, popup_char)
-                        return
-                    curr_post += 1
-    
-    def do_popup_single(self, blank_count):
-        post = randint(0, blank_count - 1)
-        popup_char = ['a', 'b'][randint(0, 1)]
-        self.popup_post_char(post, popup_char)
-    
-    def do_popup_twice(self, blank_count):
-        self.do_popup_single(blank_count)
-        self.do_popup_single(blank_count - 1)
-    
-    def get_blank_count(self):
-        return sum([ i.count(' ') for i in self.view_contant ])
+        return str_list[:post] + [popup_char] + str_list[post + 1:]
     
     def do_popup(self):
-        blank_count = self.get_blank_count()
-        self.do_popup_single(blank_count)
+        post = randint(0, len(self.content)-1)
+        popup_char = ['a', 'b'][randint(0, 1)]
+        if ' ' == self.content[post]:
+            self.content[post] = popup_char
+        else:
+            self.do_popup()
+            
+    def do_punch(self,index_list):
+        #get all lists
+        temp_list = [ ''.join([ self.content[i] for i in j ]) for j in  index_list ]
+        #do punch in every line
+        temp_list = [ i.replace(' ','')+' '*i.count(' ') for i in temp_list ]
+        #assign lists back to content
+        for i in xrange(4):
+            for j in xrange(4):
+                self.content[index_list[i][j]] = temp_list[i][j]
     
-    def unsparse_line(self, l):
-        # print '**************'
-        # print self.sort_list[l]
-        result = False
-        no_blank_line = ''
-        for i in self.sort_list[l]:
-            if not ' ' == i:
-                no_blank_line += i
-        if (not no_blank_line == self.sort_list[l][:len(no_blank_line)] and
-            not 4 == len(no_blank_line)):
-            self.sort_list[l] = no_blank_line + '   '[len(no_blank_line) - 1:]
-            result = True
-            # print '**************'
-            # print self.sort_list[l]
-        return result
-    
-    def do_sort_line(self, l):
-        self.unsparse_line(l)
-        
-        for i in xrange(len(self.sort_list[l]) - 1):
-            curr_char = self.sort_list[l][i]
-            if not ' ' == curr_char and curr_char == self.sort_list[l][i + 1]:
-                self.sort_list[l] = self.set_list_char(self.sort_list[l], i, chr(ord(curr_char) + 1))
-                self.sort_list[l] = self.set_list_char(self.sort_list[l], i + 1, ' ')
-        
-        return self.unsparse_line(l)
-    
-    def do_sort_list(self):
-        go_on_sort = False
-        for i in xrange(len(self.sort_list)):
-            go_on_sort = self.do_sort_line(i)
-        if go_on_sort:
-            self.do_sort_list()
+    def do_merge(self,index_list):
+        #get all lists
+        temp_list = [ ''.join([ self.content[i] for i in j ]) for j in  index_list ]
+        #do merge in every line
+        for l in temp_list:
+            for i in xrange(len(l)-1):
+                if l[i] == l[i+1] and l[i] !=' ':
+                    ll = list(l)
+                    ll[i] = chr(ord(ll[i])+1)
+                    ll=ll[:i+1]+ll[i+2:]+[' ']
+                    temp_list[temp_list.index(l)]=''.join(ll)
+                    break
+        #assign lists back to content
+        for i in xrange(4):
+            for j in xrange(4):
+                self.content[index_list[i][j]] = temp_list[i][j]        
     
     def do_slide_up(self):
-        self.sort_list = ['', '', '', '']
-        for i in xrange(len(self.view_contant)):
-            for j in xrange(len(self.view_contant[0])):
-                self.sort_list[i] += self.view_contant[j][i]
-        self.do_sort_list()
-        for i in xrange(len(self.view_contant)):
-            for j in xrange(len(self.view_contant[0])):
-                self.view_contant[j] = self.set_list_char(self.view_contant[j], i,
-                                                          self.sort_list[i][j])
+        self.do_punch(up_index_list)
+        self.do_merge(up_index_list)
     
     def do_slide_down(self):
-        self.sort_list = ['', '', '', '']
-        for i in xrange(len(self.view_contant)):
-            for j in xrange(len(self.view_contant[0])):
-                self.sort_list[i] += self.view_contant[len(self.view_contant[0]) - 1 - j][i]
-        self.do_sort_list()
-        for i in xrange(len(self.view_contant)):
-            for j in xrange(len(self.view_contant[0])):
-                self.view_contant[j] = self.set_list_char(self.view_contant[j], i,
-                                                          self.sort_list[i][len(self.view_contant[0]) - 1 - j])
+        self.do_punch(down_index_list)
+        self.do_merge(down_index_list)
     
     def do_slide_left(self):
-        self.sort_list = ['', '', '', '']
-        for i in xrange(len(self.view_contant)):
-            self.sort_list[i] = self.view_contant[i]
-        self.do_sort_list()
-        for i in xrange(len(self.view_contant)):
-            self.view_contant[i] = self.sort_list[i]
+        self.do_punch(left_index_list)
+        self.do_merge(left_index_list)
     
     def do_slide_right(self):
-        self.sort_list = ['', '', '', '']
-        for i in xrange(len(self.view_contant)):
-            for j in xrange(len(self.view_contant[0])):
-                self.sort_list[i] += self.view_contant[i][len(self.view_contant[0]) - 1 - j]
-        self.do_sort_list()
-        for i in xrange(len(self.view_contant)):
-            for j in xrange(len(self.view_contant[0])):
-                self.view_contant[i] = self.set_list_char(self.view_contant[i], j,
-                                                          self.sort_list[i][len(self.view_contant[0]) - 1 - j])
+        self.do_punch(right_index_list)
+        self.do_merge(right_index_list)
     
-    def do_slide(self, slide):
-        
-        curr_view = [i for i in self.view_contant]
+    def do_slide(self, slide):        
+        curr_view = list(self.content)
         if curses.KEY_UP == slide:
             self.do_slide_up()
         elif curses.KEY_DOWN == slide:
@@ -132,7 +97,7 @@ class My_2048(object):
         elif curses.KEY_RIGHT == slide:
             self.do_slide_right()
         the_same = True
-        if curr_view != self.view_contant :
+        if curr_view != self.content :
             the_same = False
 
         if not the_same:
@@ -142,13 +107,11 @@ class My_2048(object):
     
     def is_game_over(self):
         #backup
-        backup_view_contant = list(self.view_contant)
-        backup_sort_list = list(self.sort_list)
+        backup_view_contant = list(self.content)
         over = False
         if self.do_slide(curses.KEY_UP) and self.do_slide(curses.KEY_DOWN) and self.do_slide(curses.KEY_LEFT) and self.do_slide(curses.KEY_RIGHT):
             over = True
         self.view_contant = list(backup_view_contant)
-        self.sort_list = list(backup_sort_list)
         return over
     
     def disp_init(self):
@@ -165,34 +128,17 @@ class My_2048(object):
 
     def do_restart(self,key=0):
         self.__init__()
-        self.do_popup_twice(16)
+        #pop twice
+        self.do_popup()
+        self.do_popup()
         stdscr.clear()
         self.do_refresh()
 
     def do_refresh(self):
-        view = ('''
-            +---+---+---+---+
-            | 1 | 1 | 1 | 1 |
-            +---+---+---+---+
-            | 1 | 1 | 1 | 1 |
-            +---+---+---+---+
-            | 1 | 1 | 1 | 1 |
-            +---+---+---+---+
-            | 1 | 1 | 1 | 1 |
-            +---+---+---+---+
-            
-            ''')
-        
-        post_list = []
-        for i in xrange(len(view)):
-            if '1' == view[i]:
-                post_list.append(i)
-        
-        view_str = self.get_view_str()
-        for i in xrange(len(post_list)):
-            view = self.set_list_char(view, post_list[i], view_str[i])
-        
-        stdscr.addstr(0,0,view,curses.color_pair(1))
+        global screen_mask
+        for i in xrange(len(chairs)):
+            screen_mask = self.set_list_char(screen_mask, chairs[i], self.content[i])
+        stdscr.addstr(0,0,''.join(screen_mask),curses.color_pair(1))
         stdscr.addstr(10,0,'up: i down: k left: j right: l restart: r quit: q',curses.color_pair(1))
  
     key_lists = { curses.KEY_UP:do_slide, curses.KEY_DOWN:do_slide, curses.KEY_LEFT:do_slide, \
@@ -206,14 +152,14 @@ class My_2048(object):
             key = stdscr.getch()
             #stdscr.clear()
             debug('               ')
-            debug(str(key))
+            #debug(str(key))
             if not key in self.key_lists.keys():
                 continue
             self.key_lists[key](self,key)
             #do refresh
             self.do_refresh()
-            if self.is_game_over():
-                stdscr.addstr(11,0,'game over !!',curses.color_pair(1))
+#            if self.is_game_over():
+#                stdscr.addstr(11,0,'game over !!',curses.color_pair(1))
          
 
 def main(win):
