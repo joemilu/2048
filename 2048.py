@@ -32,6 +32,7 @@ class My_2048(object):
     
     def __init__(self):
         self.content=[' ']*16
+        self.points = 0
     
     def set_list_char(self, str_list, post, popup_char):
         str_list[post] = popup_char
@@ -64,6 +65,7 @@ class My_2048(object):
             for j in xrange(len(temp_list[i]) - 1 ):
                 if temp_list[i][j] == temp_list[i][j+1] and temp_list[i][j] != ' ':
                     temp_list[i][j] = chr(ord(temp_list[i][j]) + 1)
+                    self.points += 2**(ord(temp_list[i][j])-ord('a')+1) 
                     temp_list[i] = temp_list[i][:j+1] + temp_list[i][j+2:] + [' ']
                     break
         #assign lists back to content
@@ -85,9 +87,11 @@ class My_2048(object):
     def is_game_over(self):
         #backup
         backup_view_contant = list(self.content)
+        backup_points = self.points
         if self.do_slide(curses.KEY_UP) and self.do_slide(curses.KEY_DOWN) and self.do_slide(curses.KEY_LEFT) and self.do_slide(curses.KEY_RIGHT):
-            stdscr.addstr(11,0,'game over !!',curses.color_pair(1))
+            stdscr.addstr(11,20,'game over !!',curses.color_pair(1))
         self.content = list(backup_view_contant)
+        self.points = backup_points
             
     def disp_init(self):
         curses.start_color()
@@ -115,6 +119,8 @@ class My_2048(object):
             self.set_list_char(screen_mask, chairs[i], self.content[i])
         stdscr.addstr(0,0,''.join(screen_mask),curses.color_pair(1))
         stdscr.addstr(10,0,'up: i down: k left: j right: l restart: r quit: q',curses.color_pair(1))
+        stdscr.addstr(11,0,' '*80,curses.color_pair(1))
+        stdscr.addstr(11,0,'total points: %d'%(self.points),curses.color_pair(1))
  
     key_lists = { curses.KEY_UP:do_slide, curses.KEY_DOWN:do_slide, curses.KEY_LEFT:do_slide, \
             curses.KEY_RIGHT:do_slide, ord('r'):do_restart, ord('q'):do_quit}
